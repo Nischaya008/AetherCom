@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "PWA Store - Full Stack E-commerce Application",
   "private": true,
+  "type": "module",
   "scripts": {
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
     "dev:backend": "cd backend && npm run dev",
