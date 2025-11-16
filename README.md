@@ -1,8 +1,8 @@
-# PWA Store
+# AetherCom - E-commerce that refuses to go offline
 
-![PWA Store Banner](https://github.com/Nischaya008/Image_hosting/blob/main/Screenshot%202025-11-16%20191009.png?raw=true)
+![AetherCom Banner](https://github.com/Nischaya008/Image_hosting/blob/main/Screenshot%202025-11-16%20191009.png?raw=true)
 
-🛒 **PWA Store** is a full-stack, offline-first Progressive Web Application (PWA) e-commerce platform built with modern web technologies. The application enables users to browse products, manage shopping carts, and place orders even when offline, with automatic synchronization when connectivity is restored.
+🛒 **AetherCom** is a full-stack, offline-first Progressive Web Application (PWA) e-commerce platform built with modern web technologies. The application enables users to browse products, manage shopping carts, and place orders even when offline, with automatic synchronization when connectivity is restored.
 
 ## 🌟 Features
 
@@ -219,7 +219,7 @@ Return Error / Empty State
 
 ## 🚀 Deployment
 
-PWA Store is optimized for deployment on **Vercel** with serverless functions, but also supports **Docker** deployment.
+AetherCom is optimized for deployment on **Vercel** with serverless functions, but also supports **Docker** deployment.
 
 ### Vercel Deployment
 
@@ -325,8 +325,8 @@ PWA Store is optimized for deployment on **Vercel** with serverless functions, b
 ### 1️⃣ Clone the repository
 
 ```bash
-git clone https://github.com/Nischaya008/pwa-store
-cd pwa-store
+git clone https://github.com/Nischaya008/AetherCom
+cd AetherCom
 ```
 
 ### 2️⃣ Backend Setup
@@ -341,11 +341,10 @@ npm install
 # Create .env file
 cat > .env << EOF
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/pwa-store
+MONGODB_URI=mongodb://localhost:27017/example
 JWT_SECRET=your-secret-key-change-in-production
 NODE_ENV=development
 CORS_ORIGIN=http://localhost:5173
-EOF
 
 # Seed the database (optional)
 npm run seed
@@ -364,9 +363,8 @@ cd frontend
 npm install
 
 # Create .env file
-cat > .env << EOF
+cat > .env
 VITE_API_URL=http://localhost:5000/api
-EOF
 
 # Start development server
 npm run dev
@@ -395,7 +393,7 @@ Health Check: http://localhost:5000/api/health
 ## 📁 Project Structure
 
 ```
-pwa-store/
+AetherCom/
 ├── api/                    # Vercel serverless function entry point
 │   └── index.js           # Serverless wrapper for Express app
 ├── backend/               # Node.js/Express backend
@@ -444,7 +442,7 @@ npm run test:e2e    # E2E tests
 
 ### Offline-First Architecture
 
-PWA Store is designed to work completely offline. All user actions are immediately saved to IndexedDB, and when connectivity is restored, actions are automatically synchronized with the server.
+AetherCom is designed to work completely offline. All user actions are immediately saved to IndexedDB, and when connectivity is restored, actions are automatically synchronized with the server.
 
 ### Idempotent Orders
 
@@ -465,7 +463,7 @@ Multiple caching strategies ensure optimal performance:
 
 ## 🤝 Contributing
 
-Contributions are welcome! Feel free to open issues or submit pull requests to enhance PWA Store. 🚀
+Contributions are welcome! Feel free to open issues or submit pull requests to enhance AetherCom. 🚀
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature-name`)
@@ -483,9 +481,9 @@ Contributions are welcome! Feel free to open issues or submit pull requests to e
 
 ---
 
-## 📝 License
+## 📜 License
 
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
+**This project is proprietary and strictly confidential. Unauthorized use, reproduction, distribution, or modification is strictly prohibited and will result in legal action. All rights reserved. See the [LICENSE](https://github.com/Nischaya008/AetherCom/blob/main/LICENSE) for details.**
 
 ---
 
@@ -499,28 +497,4 @@ For any inquiries or feedback, reach out via:
 
 ---
 
-## 🙏 Acknowledgments
-
-- **OpenStreetMap** for free geocoding services
-- **Workbox** for service worker utilities
-- **Vite** for the excellent build tooling
-- **React** team for the amazing framework
-
----
-
 **Stay Innovated, Keep Coding, Think BIG! 🚀**
-
----
-
-## 📊 Project Statistics
-
-- **Frontend**: React 19.2.0, Vite 7.2.2
-- **Backend**: Node.js, Express 4.18.2
-- **Database**: MongoDB with Mongoose 8.0.3
-- **PWA**: Service Worker, IndexedDB, Geolocation API
-- **Deployment**: Vercel (Serverless), Docker
-
----
-
-*Built with ❤️ for offline-first e-commerce experiences*
-
