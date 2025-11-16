@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { fetchProduct } from '../utils/api.js';
 import { useCart } from '../contexts/CartContext.jsx';
+import { getProduct, saveProducts } from '../utils/db.js';
+import { isOnline } from '../utils/queue.js';
 
 export const ProductDetail = () => {
   const { id } = useParams();
@@ -33,10 +35,34 @@ export const ProductDetail = () => {
   const loadProduct = async () => {
     try {
       setLoading(true);
-      const data = await fetchProduct(id);
-      setProduct(data);
-    } catch (error) {
-      console.error('Error loading product:', error);
+      
+      // Try to load from cache/IndexedDB first for offline support
+      if (!isOnline()) {
+        const cachedProduct = await getProduct(id);
+        if (cachedProduct) {
+          setProduct(cachedProduct);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Try to fetch from API
+      try {
+        const data = await fetchProduct(id);
+        setProduct(data);
+        
+        // Save to IndexedDB for offline access
+        if (data) {
+          await saveProducts([data]);
+        }
+      } catch (error) {
+        console.error('Error loading product:', error);
+        // Fallback to cached product
+        const cachedProduct = await getProduct(id);
+        if (cachedProduct) {
+          setProduct(cachedProduct);
+        }
+      }
     } finally {
       setLoading(false);
     }

@@ -1,12 +1,14 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'pwa-store-db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 const STORES = {
   CART: 'cart',
   PENDING_ACTIONS: 'pendingActions',
-  ORDERS: 'orders'
+  ORDERS: 'orders',
+  PRODUCTS: 'products',
+  CATEGORIES: 'categories'
 };
 
 // Initialize IndexedDB with persistence
@@ -38,6 +40,23 @@ export const initDB = async () => {
         ordersStore.createIndex('createdAt', 'createdAt');
         ordersStore.createIndex('email', 'email');
         ordersStore.createIndex('status', 'status');
+      }
+
+      // Products store - for offline access
+      if (!db.objectStoreNames.contains(STORES.PRODUCTS)) {
+        const productsStore = db.createObjectStore(STORES.PRODUCTS, {
+          keyPath: '_id'
+        });
+        productsStore.createIndex('name', 'name');
+        productsStore.createIndex('categoryId', 'categoryId');
+      }
+
+      // Categories store - for offline access
+      if (!db.objectStoreNames.contains(STORES.CATEGORIES)) {
+        const categoriesStore = db.createObjectStore(STORES.CATEGORIES, {
+          keyPath: '_id'
+        });
+        categoriesStore.createIndex('name', 'name');
       }
     }
   });
@@ -172,6 +191,56 @@ export const getOrder = async (orderId) => {
   const tx = db.transaction(STORES.ORDERS, 'readonly');
   const store = tx.objectStore(STORES.ORDERS);
   return await store.get(orderId);
+};
+
+export const removeOrder = async (orderId) => {
+  const db = await initDB();
+  const tx = db.transaction(STORES.ORDERS, 'readwrite');
+  const store = tx.objectStore(STORES.ORDERS);
+  await store.delete(orderId);
+};
+
+// Products operations
+export const saveProducts = async (products) => {
+  const db = await initDB();
+  const tx = db.transaction(STORES.PRODUCTS, 'readwrite');
+  const store = tx.objectStore(STORES.PRODUCTS);
+  for (const product of products) {
+    await store.put(product);
+  }
+  return products;
+};
+
+export const getProducts = async () => {
+  const db = await initDB();
+  const tx = db.transaction(STORES.PRODUCTS, 'readonly');
+  const store = tx.objectStore(STORES.PRODUCTS);
+  return await store.getAll();
+};
+
+export const getProduct = async (productId) => {
+  const db = await initDB();
+  const tx = db.transaction(STORES.PRODUCTS, 'readonly');
+  const store = tx.objectStore(STORES.PRODUCTS);
+  return await store.get(productId);
+};
+
+// Categories operations
+export const saveCategories = async (categories) => {
+  const db = await initDB();
+  const tx = db.transaction(STORES.CATEGORIES, 'readwrite');
+  const store = tx.objectStore(STORES.CATEGORIES);
+  for (const category of categories) {
+    await store.put(category);
+  }
+  return categories;
+};
+
+export const getCategories = async () => {
+  const db = await initDB();
+  const tx = db.transaction(STORES.CATEGORIES, 'readonly');
+  const store = tx.objectStore(STORES.CATEGORIES);
+  return await store.getAll();
 };
 
 export { STORES };

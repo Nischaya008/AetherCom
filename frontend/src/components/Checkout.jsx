@@ -106,9 +106,26 @@ export const Checkout = () => {
           throw error;
         }
       } else {
-        // Offline - queue the action
+        // Offline - queue the action and save order locally
         const action = createAction(ACTION_TYPES.CHECKOUT, orderData);
         await addPendingAction(action);
+        
+        // Create a temporary order object for offline display
+        const tempOrder = {
+          _id: `temp-${orderData.clientActionId}`,
+          clientActionId: orderData.clientActionId,
+          lineItems: orderData.lineItems,
+          totalPrice: orderData.totalPrice,
+          shippingAddress: orderData.shippingAddress,
+          email: orderData.email,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          isOffline: true
+        };
+        
+        // Save order to IndexedDB for offline viewing
+        await saveOrder(tempOrder);
+        
         // Mark order as placed to prevent redirect
         setOrderPlaced(true);
         // Clear cart optimistically

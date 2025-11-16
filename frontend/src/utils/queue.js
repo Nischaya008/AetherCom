@@ -8,7 +8,10 @@ import {
 // Re-export addPendingAction for convenience
 export const addPendingAction = dbAddPendingAction;
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Use relative URL in production (same domain), or env variable for dev, or localhost fallback
+const API_BASE_URL = import.meta.env.PROD 
+  ? '/api' 
+  : (import.meta.env.VITE_API_URL || 'http://localhost:5000/api');
 
 // Queue action types
 export const ACTION_TYPES = {
@@ -85,6 +88,20 @@ const processCheckout = async (action) => {
 
     if (response.ok) {
       const data = await response.json();
+      // Update the temp order with the real order data
+      if (data.order) {
+        const { saveOrder, getOrder, removeOrder } = await import('./db.js');
+        const tempOrderId = `temp-${action.payload.clientActionId}`;
+        const tempOrder = await getOrder(tempOrderId);
+        if (tempOrder) {
+          // Replace temp order with real order
+          await saveOrder(data.order);
+          // Remove temp order
+          await removeOrder(tempOrderId);
+        } else {
+          await saveOrder(data.order);
+        }
+      }
       return true;
     } else if (response.status === 400) {
       // Handle reconciliation

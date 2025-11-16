@@ -2,6 +2,8 @@ import { useState, useEffect, Suspense, lazy } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchProducts, fetchCategories } from '../utils/api.js';
 import { useCart } from '../contexts/CartContext.jsx';
+import { saveProducts, getProducts, saveCategories, getCategories } from '../utils/db.js';
+import { isOnline } from '../utils/queue.js';
 
 const ProductCard = lazy(() => import('./ProductCard.jsx').then(m => ({ default: m.ProductCard })));
 
@@ -38,16 +40,65 @@ export const ProductList = () => {
   const loadProducts = async () => {
     try {
       setLoading(true);
-      const data = await fetchProducts({
-        page,
-        limit: 20,
-        search,
-        category: selectedCategory
-      });
-      setProducts(data.products);
-      setTotalPages(data.pagination.pages);
-    } catch (error) {
-      console.error('Error loading products:', error);
+      
+      // Try to load from cache/IndexedDB first for offline support
+      if (!isOnline()) {
+        const cachedProducts = await getProducts();
+        if (cachedProducts.length > 0) {
+          // Filter cached products based on search and category
+          let filtered = cachedProducts;
+          if (search) {
+            const searchLower = search.toLowerCase();
+            filtered = filtered.filter(p => 
+              p.name?.toLowerCase().includes(searchLower) ||
+              p.description?.toLowerCase().includes(searchLower)
+            );
+          }
+          if (selectedCategory) {
+            filtered = filtered.filter(p => String(p.categoryId?._id || p.categoryId) === selectedCategory);
+          }
+          setProducts(filtered);
+          setTotalPages(Math.ceil(filtered.length / 20));
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Try to fetch from API
+      try {
+        const data = await fetchProducts({
+          page,
+          limit: 20,
+          search,
+          category: selectedCategory
+        });
+        setProducts(data.products);
+        setTotalPages(data.pagination.pages);
+        
+        // Save to IndexedDB for offline access
+        if (data.products && data.products.length > 0) {
+          await saveProducts(data.products);
+        }
+      } catch (error) {
+        console.error('Error loading products:', error);
+        // Fallback to cached products
+        const cachedProducts = await getProducts();
+        if (cachedProducts.length > 0) {
+          let filtered = cachedProducts;
+          if (search) {
+            const searchLower = search.toLowerCase();
+            filtered = filtered.filter(p => 
+              p.name?.toLowerCase().includes(searchLower) ||
+              p.description?.toLowerCase().includes(searchLower)
+            );
+          }
+          if (selectedCategory) {
+            filtered = filtered.filter(p => String(p.categoryId?._id || p.categoryId) === selectedCategory);
+          }
+          setProducts(filtered);
+          setTotalPages(Math.ceil(filtered.length / 20));
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -55,8 +106,32 @@ export const ProductList = () => {
 
   const loadCategories = async () => {
     try {
-      const data = await fetchCategories();
-      setCategories(data);
+      // Try to load from cache/IndexedDB first for offline support
+      if (!isOnline()) {
+        const cachedCategories = await getCategories();
+        if (cachedCategories.length > 0) {
+          setCategories(cachedCategories);
+          return;
+        }
+      }
+
+      // Try to fetch from API
+      try {
+        const data = await fetchCategories();
+        setCategories(data);
+        
+        // Save to IndexedDB for offline access
+        if (data && data.length > 0) {
+          await saveCategories(data);
+        }
+      } catch (error) {
+        console.error('Error loading categories:', error);
+        // Fallback to cached categories
+        const cachedCategories = await getCategories();
+        if (cachedCategories.length > 0) {
+          setCategories(cachedCategories);
+        }
+      }
     } catch (error) {
       console.error('Error loading categories:', error);
     }

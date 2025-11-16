@@ -11,18 +11,42 @@ export const OfflineBanner = () => {
     <div
       style={{
         position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
+        bottom: '20px',
+        left: '20px',
         backgroundColor: '#f44336',
         color: 'white',
-        padding: '12px',
-        textAlign: 'center',
+        padding: '14px 20px',
+        borderRadius: '8px',
         zIndex: 10000,
-        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        maxWidth: '400px',
+        animation: 'slideIn 0.3s ease-out'
       }}
     >
-      <strong>Offline Mode:</strong> You are currently offline. Changes will be synced when connection is restored.
+      <style>{`
+        @keyframes slideIn {
+          from {
+            transform: translateX(-100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
+      <span style={{ fontSize: '18px' }}>📡</span>
+      <div>
+        <strong style={{ display: 'block', marginBottom: '2px', fontSize: '14px' }}>
+          Offline Mode
+        </strong>
+        <span style={{ fontSize: '12px', opacity: 0.9 }}>
+          Changes will be synced when connection is restored.
+        </span>
+      </div>
     </div>
   );
 };

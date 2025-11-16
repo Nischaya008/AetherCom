@@ -38,13 +38,47 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/api\./,
+            urlPattern: /\/api\/products/,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'api-cache',
-              networkTimeoutSeconds: 10,
+              cacheName: 'products-cache',
+              networkTimeoutSeconds: 3,
               cacheableResponse: {
                 statuses: [0, 200]
+              },
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+              }
+            }
+          },
+          {
+            urlPattern: /\/api\/categories/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'categories-cache',
+              networkTimeoutSeconds: 3,
+              cacheableResponse: {
+                statuses: [0, 200]
+              },
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+              }
+            }
+          },
+          {
+            urlPattern: /\/api\/products\/[^/]+$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'product-detail-cache',
+              networkTimeoutSeconds: 3,
+              cacheableResponse: {
+                statuses: [0, 200]
+              },
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 // 24 hours
               }
             }
           },
@@ -60,22 +94,14 @@ export default defineConfig({
             }
           },
           {
-            urlPattern: /^https:\/\/localhost:5000\/api\/products/,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'products-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 5 // 5 minutes
-              }
-            }
-          },
-          {
-            urlPattern: /^https:\/\/localhost:5000\/api\/orders/,
+            urlPattern: /\/api\//,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'orders-cache',
-              networkTimeoutSeconds: 10
+              cacheName: 'api-cache',
+              networkTimeoutSeconds: 10,
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
             }
           }
         ]
