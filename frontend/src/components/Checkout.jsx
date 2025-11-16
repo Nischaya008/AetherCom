@@ -12,11 +12,18 @@ export const Checkout = () => {
   const { cart, getCartTotal, clearCart: clearCartContext } = useCart();
   const [formData, setFormData] = useState({
     email: '',
-    shippingAddress: ''
+    shippingAddress: '',
+    // Manual address fields for offline
+    street: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: ''
   });
   const [address, setAddress] = useState(null);
   const [loadingAddress, setLoadingAddress] = useState(true);
   const [addressError, setAddressError] = useState(null);
+  const [useManualAddress, setUseManualAddress] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [reconciliation, setReconciliation] = useState(null);
@@ -29,8 +36,15 @@ export const Checkout = () => {
     }
   }, [cart, navigate, submitting, orderPlaced]);
 
-  // Auto-detect location on mount
+  // Auto-detect location on mount (only if online)
   useEffect(() => {
+    // If offline, skip location detection and allow manual entry
+    if (!isOnline()) {
+      setLoadingAddress(false);
+      setUseManualAddress(true);
+      return;
+    }
+
     const fetchAddress = async () => {
       setLoadingAddress(true);
       setAddressError(null);
@@ -46,11 +60,8 @@ export const Checkout = () => {
       } catch (error) {
         console.error('Error fetching address:', error);
         setAddressError(error.message);
-        // Set a default message for shipping address
-        setFormData(prev => ({
-          ...prev,
-          shippingAddress: 'Unable to detect location. Please ensure location permissions are enabled.'
-        }));
+        // If location fails, allow manual entry
+        setUseManualAddress(true);
       } finally {
         setLoadingAddress(false);
       }
@@ -64,9 +75,35 @@ export const Checkout = () => {
     if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Valid email is required';
     }
-    if (!address || !formData.shippingAddress || formData.shippingAddress.trim().length < 10) {
-      newErrors.shippingAddress = 'Please enable location permissions to continue';
+    
+    // Validate address based on mode
+    if (useManualAddress) {
+      // Manual address validation
+      if (!formData.street || formData.street.trim().length < 5) {
+        newErrors.street = 'Street address is required (at least 5 characters)';
+      }
+      if (!formData.city || formData.city.trim().length < 2) {
+        newErrors.city = 'City is required';
+      }
+      if (!formData.country || formData.country.trim().length < 2) {
+        newErrors.country = 'Country is required';
+      }
+      // Build formatted address from manual fields
+      const addressParts = [
+        formData.street,
+        formData.city,
+        formData.state,
+        formData.postalCode,
+        formData.country
+      ].filter(Boolean);
+      formData.shippingAddress = addressParts.join(', ');
+    } else {
+      // Automatic address validation
+      if (!address || !formData.shippingAddress || formData.shippingAddress.trim().length < 10) {
+        newErrors.shippingAddress = 'Please enable location permissions to continue';
+      }
     }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -457,7 +494,7 @@ export const Checkout = () => {
                 }}>
                   Shipping Address
                 </label>
-                {loadingAddress && (
+                {loadingAddress && !useManualAddress && (
                   <span style={{
                     fontSize: '0.875rem',
                     color: '#667eea',
@@ -477,9 +514,274 @@ export const Checkout = () => {
                     Detecting location...
                   </span>
                 )}
+                {useManualAddress && isOnline() && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setUseManualAddress(false);
+                      setLoadingAddress(true);
+                      setAddressError(null);
+                      try {
+                        const currentAddress = await getCurrentAddress();
+                        setAddress(currentAddress);
+                        setFormData(prev => ({
+                          ...prev,
+                          shippingAddress: currentAddress.formatted
+                        }));
+                      } catch (error) {
+                        setAddressError(error.message);
+                        setUseManualAddress(true);
+                      } finally {
+                        setLoadingAddress(false);
+                      }
+                    }}
+                    style={{
+                      fontSize: '0.875rem',
+                      color: '#667eea',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      padding: 0
+                    }}
+                  >
+                    Use Auto-Detect
+                  </button>
+                )}
               </div>
               
-              {loadingAddress ? (
+              {useManualAddress ? (
+                // Manual address input fields
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem'
+                }}>
+                  {!isOnline() && (
+                    <div style={{
+                      padding: '0.75rem',
+                      backgroundColor: '#e3f2fd',
+                      border: '1px solid #2196f3',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      color: '#1976d2'
+                    }}>
+                      📡 Offline Mode: Please enter your shipping address manually
+                    </div>
+                  )}
+                  
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      marginBottom: '0.5rem',
+                      fontWeight: '500',
+                      color: '#666',
+                      fontSize: '0.9rem'
+                    }}>
+                      Street Address *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.street}
+                      onChange={(e) => setFormData({ ...formData, street: e.target.value })}
+                      placeholder="123 Main Street"
+                      style={{
+                        width: '100%',
+                        padding: '0.875rem',
+                        border: errors.street ? '2px solid #f44336' : '2px solid #e0e0e0',
+                        borderRadius: '10px',
+                        fontSize: '1rem',
+                        transition: 'border-color 0.2s',
+                        outline: 'none'
+                      }}
+                      onFocus={(e) => {
+                        if (!errors.street) {
+                          e.currentTarget.style.borderColor = '#667eea';
+                        }
+                      }}
+                      onBlur={(e) => {
+                        if (!errors.street) {
+                          e.currentTarget.style.borderColor = '#e0e0e0';
+                        }
+                      }}
+                    />
+                    {errors.street && (
+                      <span style={{
+                        color: '#f44336',
+                        fontSize: '0.875rem',
+                        marginTop: '0.25rem',
+                        display: 'block'
+                      }}>
+                        {errors.street}
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '2fr 1fr',
+                    gap: '1rem'
+                  }}>
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        marginBottom: '0.5rem',
+                        fontWeight: '500',
+                        color: '#666',
+                        fontSize: '0.9rem'
+                      }}>
+                        City *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                        placeholder="New York"
+                        style={{
+                          width: '100%',
+                          padding: '0.875rem',
+                          border: errors.city ? '2px solid #f44336' : '2px solid #e0e0e0',
+                          borderRadius: '10px',
+                          fontSize: '1rem',
+                          transition: 'border-color 0.2s',
+                          outline: 'none'
+                        }}
+                        onFocus={(e) => {
+                          if (!errors.city) {
+                            e.currentTarget.style.borderColor = '#667eea';
+                          }
+                        }}
+                        onBlur={(e) => {
+                          if (!errors.city) {
+                            e.currentTarget.style.borderColor = '#e0e0e0';
+                          }
+                        }}
+                      />
+                      {errors.city && (
+                        <span style={{
+                          color: '#f44336',
+                          fontSize: '0.875rem',
+                          marginTop: '0.25rem',
+                          display: 'block'
+                        }}>
+                          {errors.city}
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        marginBottom: '0.5rem',
+                        fontWeight: '500',
+                        color: '#666',
+                        fontSize: '0.9rem'
+                      }}>
+                        Postal Code
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.postalCode}
+                        onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                        placeholder="10001"
+                        style={{
+                          width: '100%',
+                          padding: '0.875rem',
+                          border: '2px solid #e0e0e0',
+                          borderRadius: '10px',
+                          fontSize: '1rem',
+                          transition: 'border-color 0.2s',
+                          outline: 'none'
+                        }}
+                        onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                        onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '1rem'
+                  }}>
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        marginBottom: '0.5rem',
+                        fontWeight: '500',
+                        color: '#666',
+                        fontSize: '0.9rem'
+                      }}>
+                        State/Province
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.state}
+                        onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                        placeholder="NY"
+                        style={{
+                          width: '100%',
+                          padding: '0.875rem',
+                          border: '2px solid #e0e0e0',
+                          borderRadius: '10px',
+                          fontSize: '1rem',
+                          transition: 'border-color 0.2s',
+                          outline: 'none'
+                        }}
+                        onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                        onBlur={(e) => e.currentTarget.style.borderColor = '#e0e0e0'}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        marginBottom: '0.5rem',
+                        fontWeight: '500',
+                        color: '#666',
+                        fontSize: '0.9rem'
+                      }}>
+                        Country *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.country}
+                        onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                        placeholder="United States"
+                        style={{
+                          width: '100%',
+                          padding: '0.875rem',
+                          border: errors.country ? '2px solid #f44336' : '2px solid #e0e0e0',
+                          borderRadius: '10px',
+                          fontSize: '1rem',
+                          transition: 'border-color 0.2s',
+                          outline: 'none'
+                        }}
+                        onFocus={(e) => {
+                          if (!errors.country) {
+                            e.currentTarget.style.borderColor = '#667eea';
+                          }
+                        }}
+                        onBlur={(e) => {
+                          if (!errors.country) {
+                            e.currentTarget.style.borderColor = '#e0e0e0';
+                          }
+                        }}
+                      />
+                      {errors.country && (
+                        <span style={{
+                          color: '#f44336',
+                          fontSize: '0.875rem',
+                          marginTop: '0.25rem',
+                          display: 'block'
+                        }}>
+                          {errors.country}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : loadingAddress ? (
                 <div style={{
                   padding: '2rem',
                   textAlign: 'center',
@@ -505,38 +807,62 @@ export const Checkout = () => {
                   <p style={{ margin: 0, fontSize: '0.9rem' }}>
                     {addressError}
                   </p>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setLoadingAddress(true);
-                      setAddressError(null);
-                      try {
-                        const currentAddress = await getCurrentAddress();
-                        setAddress(currentAddress);
-                        setFormData(prev => ({
-                          ...prev,
-                          shippingAddress: currentAddress.formatted
-                        }));
-                      } catch (error) {
-                        setAddressError(error.message);
-                      } finally {
-                        setLoadingAddress(false);
-                      }
-                    }}
-                    style={{
-                      marginTop: '1rem',
-                      padding: '0.625rem 1.25rem',
-                      backgroundColor: '#ffc107',
-                      color: '#856404',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                      fontSize: '0.9rem'
-                    }}
-                  >
-                    Try Again
-                  </button>
+                  <div style={{
+                    display: 'flex',
+                    gap: '0.75rem',
+                    marginTop: '1rem'
+                  }}>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setLoadingAddress(true);
+                        setAddressError(null);
+                        try {
+                          const currentAddress = await getCurrentAddress();
+                          setAddress(currentAddress);
+                          setFormData(prev => ({
+                            ...prev,
+                            shippingAddress: currentAddress.formatted
+                          }));
+                        } catch (error) {
+                          setAddressError(error.message);
+                        } finally {
+                          setLoadingAddress(false);
+                        }
+                      }}
+                      style={{
+                        padding: '0.625rem 1.25rem',
+                        backgroundColor: '#ffc107',
+                        color: '#856404',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '0.9rem'
+                      }}
+                    >
+                      Try Again
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUseManualAddress(true);
+                        setAddressError(null);
+                      }}
+                      style={{
+                        padding: '0.625rem 1.25rem',
+                        backgroundColor: '#f5f5f5',
+                        color: '#333',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '0.9rem'
+                      }}
+                    >
+                      Enter Manually
+                    </button>
+                  </div>
                 </div>
               ) : address ? (
                 <div style={{
@@ -610,34 +936,34 @@ export const Checkout = () => {
 
             <button
               type="submit"
-              disabled={submitting || loadingAddress || !address}
+              disabled={submitting || (loadingAddress && !useManualAddress) || (!useManualAddress && !address)}
               style={{
                 width: '100%',
                 padding: '1.125rem',
-                backgroundColor: (submitting || loadingAddress || !address) ? '#ccc' : '#667eea',
+                backgroundColor: (submitting || (loadingAddress && !useManualAddress) || (!useManualAddress && !address)) ? '#ccc' : '#667eea',
                 color: 'white',
                 border: 'none',
                 borderRadius: '12px',
-                cursor: (submitting || loadingAddress || !address) ? 'not-allowed' : 'pointer',
+                cursor: (submitting || (loadingAddress && !useManualAddress) || (!useManualAddress && !address)) ? 'not-allowed' : 'pointer',
                 fontSize: '1.1rem',
                 fontWeight: '600',
                 transition: 'all 0.2s',
-                boxShadow: (submitting || loadingAddress || !address) ? 'none' : '0 4px 12px rgba(102, 126, 234, 0.3)'
+                boxShadow: (submitting || (loadingAddress && !useManualAddress) || (!useManualAddress && !address)) ? 'none' : '0 4px 12px rgba(102, 126, 234, 0.3)'
               }}
               onMouseEnter={(e) => {
-                if (!submitting && !loadingAddress && address) {
+                if (!submitting && !(loadingAddress && !useManualAddress) && (useManualAddress || address)) {
                   e.currentTarget.style.backgroundColor = '#5568d3';
                   e.currentTarget.style.transform = 'translateY(-2px)';
                 }
               }}
               onMouseLeave={(e) => {
-                if (!submitting && !loadingAddress && address) {
+                if (!submitting && !(loadingAddress && !useManualAddress) && (useManualAddress || address)) {
                   e.currentTarget.style.backgroundColor = '#667eea';
                   e.currentTarget.style.transform = 'translateY(0)';
                 }
               }}
             >
-              {loadingAddress ? 'Detecting Location...' : submitting ? 'Processing Order...' : 'Place Order'}
+              {loadingAddress && !useManualAddress ? 'Detecting Location...' : submitting ? 'Processing Order...' : 'Place Order'}
             </button>
           </form>
         </div>
