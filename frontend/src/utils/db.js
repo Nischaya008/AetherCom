@@ -302,5 +302,12 @@ export const getCategories = async () => {
   return await store.getAll();
 };
 
+export const clearProducts = async () => {
+  const db = await initDB();
+  const tx = db.transaction(STORES.PRODUCTS, 'readwrite');
+  const store = tx.objectStore(STORES.PRODUCTS);
+  await store.clear();
+};
+
 export { STORES };
 

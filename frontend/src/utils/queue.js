@@ -90,7 +90,7 @@ const processCheckout = async (action) => {
       const data = await response.json();
       // Update the temp order with the real order data
       if (data.order) {
-        const { saveOrder, getOrder, removeOrder } = await import('./db.js');
+        const { saveOrder, getOrder, removeOrder, clearProducts } = await import('./db.js');
         const tempOrderId = `temp-${action.payload.clientActionId}`;
         const tempOrder = await getOrder(tempOrderId);
         if (tempOrder) {
@@ -100,6 +100,12 @@ const processCheckout = async (action) => {
           await removeOrder(tempOrderId);
         } else {
           await saveOrder(data.order);
+        }
+        
+        // Clear products cache to force refresh of stock levels
+        // This ensures stock counts are updated after order sync
+        if (clearProducts) {
+          await clearProducts().catch(console.error);
         }
       }
       return true;

@@ -73,7 +73,9 @@ export const Checkout = () => {
       lineItems: cart.map(item => ({
         productId: item.productId,
         quantity: item.quantity,
-        price: item.price
+        price: item.price,
+        name: item.name, // Include product name for offline display
+        imageURL: item.imageURL // Include product image for offline display
       })),
       totalPrice: getCartTotal(),
       shippingAddress: formData.shippingAddress,
