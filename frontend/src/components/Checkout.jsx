@@ -58,7 +58,10 @@ export const Checkout = () => {
           shippingAddress: currentAddress.formatted
         }));
       } catch (error) {
-        console.error('Error fetching address:', error);
+        // Only log error if we're actually online (expected to fail offline)
+        if (navigator.onLine) {
+          console.error('Error fetching address:', error);
+        }
         setAddressError(error.message);
         // If location fails, allow manual entry
         setUseManualAddress(true);
@@ -115,7 +118,7 @@ export const Checkout = () => {
       return;
     }
 
-    // Validate cart if online
+    // Validate cart if online (skip if network fails - proceed with checkout)
     if (isOnline()) {
       try {
         const validation = await validateCart(
@@ -130,9 +133,17 @@ export const Checkout = () => {
           return;
         }
       } catch (error) {
-        console.error('Cart validation error:', error);
-        alert('Error validating cart. Please try again.');
-        return;
+        // If network error, silently skip validation and proceed
+        // This allows checkout to work even if validation endpoint is unreachable
+        if (error.message?.includes('fetch') || error.message?.includes('network') || !navigator.onLine) {
+          console.log('Cart validation skipped due to network issue, proceeding with checkout');
+          // Continue with checkout - validation will happen on server if order is created
+        } else {
+          // Only show error for non-network issues
+          console.error('Cart validation error:', error);
+          alert('Error validating cart. Please try again.');
+          return;
+        }
       }
     }
 

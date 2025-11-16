@@ -44,7 +44,12 @@ export const Cart = () => {
         }
       }
     } catch (error) {
-      console.error('Cart validation error:', error);
+      // Only log error if we're actually online (expected to fail offline)
+      // Network errors are expected when offline, so we silently skip validation
+      if (navigator.onLine) {
+        console.error('Cart validation error:', error);
+      }
+      // Silently fail - cart validation is not critical for viewing cart
     }
   };
 

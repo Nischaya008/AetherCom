@@ -97,10 +97,16 @@ export const ProductList = () => {
         
         // Save to IndexedDB for offline access
         if (data.products && data.products.length > 0) {
-          await saveProducts(data.products).catch(console.error);
+          await saveProducts(data.products).catch(() => {
+            // Silently fail - IndexedDB save is not critical
+          });
         }
       } catch (error) {
-        console.error('Error loading products:', error);
+        // Only log error if we're actually online (network error vs expected offline)
+        // If offline, this is expected behavior
+        if (navigator.onLine) {
+          console.error('Error loading products:', error);
+        }
         // Fallback to cached products
         if (cachedProducts.length > 0) {
           let filtered = cachedProducts;

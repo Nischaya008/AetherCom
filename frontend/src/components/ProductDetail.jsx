@@ -59,10 +59,16 @@ export const ProductDetail = () => {
         
         // Save to IndexedDB for offline access
         if (data) {
-          await saveProducts([data]).catch(console.error);
+          await saveProducts([data]).catch(() => {
+            // Silently fail - IndexedDB save is not critical
+          });
         }
       } catch (error) {
-        console.error('Error loading product:', error);
+        // Only log error if we're actually online (network error vs expected offline)
+        // If offline, this is expected behavior
+        if (navigator.onLine) {
+          console.error('Error loading product:', error);
+        }
         // Fallback to cached product
         if (cachedProduct) {
           setProduct(cachedProduct);
