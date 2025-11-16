@@ -36,6 +36,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Precache workbox scripts to ensure they're available offline
+        additionalManifestEntries: [],
         runtimeCaching: [
           {
             urlPattern: /\/api\/products/,

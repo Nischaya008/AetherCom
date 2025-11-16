@@ -15,15 +15,29 @@ export const ConnectivityProvider = ({ children }) => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   useEffect(() => {
-    const handleOnline = () => {
+    const handleOnline = async () => {
       setIsOnline(true);
-      // Replay pending actions when coming online
-      replayPendingActions().catch(console.error);
+      console.log('Connection restored - syncing offline changes...');
+      
+      // Replay pending actions when coming online (orders, etc.)
+      try {
+        await replayPendingActions();
+        console.log('Offline changes synced successfully');
+      } catch (error) {
+        console.error('Error syncing offline changes:', error);
+      }
+      
+      // Trigger a custom event for components to reload data
+      window.dispatchEvent(new CustomEvent('online-sync-complete'));
     };
 
     const handleOffline = () => {
       setIsOnline(false);
+      console.log('Offline mode activated');
     };
+
+    // Set initial state
+    setIsOnline(navigator.onLine);
 
     setupConnectivityListeners(handleOnline, handleOffline);
 
@@ -42,4 +56,3 @@ export const ConnectivityProvider = ({ children }) => {
     </ConnectivityContext.Provider>
   );
 };
-

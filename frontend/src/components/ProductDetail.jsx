@@ -36,31 +36,38 @@ export const ProductDetail = () => {
     try {
       setLoading(true);
       
-      // Try to load from cache/IndexedDB first for offline support
+      // Always try to load from cache first
+      const cachedProduct = await getProduct(id).catch(() => null);
+      
+      // If offline, use cache only
       if (!isOnline()) {
-        const cachedProduct = await getProduct(id);
         if (cachedProduct) {
           setProduct(cachedProduct);
+          setLoading(false);
+          return;
+        } else {
+          setProduct(null);
           setLoading(false);
           return;
         }
       }
 
-      // Try to fetch from API
+      // Online - try to fetch from API, fallback to cache
       try {
         const data = await fetchProduct(id);
         setProduct(data);
         
         // Save to IndexedDB for offline access
         if (data) {
-          await saveProducts([data]);
+          await saveProducts([data]).catch(console.error);
         }
       } catch (error) {
         console.error('Error loading product:', error);
         // Fallback to cached product
-        const cachedProduct = await getProduct(id);
         if (cachedProduct) {
           setProduct(cachedProduct);
+        } else {
+          setProduct(null);
         }
       }
     } finally {

@@ -35,15 +35,29 @@ export const ProductList = () => {
 
   useEffect(() => {
     loadCategories();
+    
+    // Reload data when coming back online
+    const handleOnlineSync = () => {
+      loadProducts();
+      loadCategories();
+    };
+    
+    window.addEventListener('online-sync-complete', handleOnlineSync);
+    
+    return () => {
+      window.removeEventListener('online-sync-complete', handleOnlineSync);
+    };
   }, []);
 
   const loadProducts = async () => {
     try {
       setLoading(true);
       
-      // Try to load from cache/IndexedDB first for offline support
+      // Always try to load from cache first (for faster initial load)
+      const cachedProducts = await getProducts().catch(() => []);
+      
+      // If offline, use cache only
       if (!isOnline()) {
-        const cachedProducts = await getProducts();
         if (cachedProducts.length > 0) {
           // Filter cached products based on search and category
           let filtered = cachedProducts;
@@ -61,10 +75,16 @@ export const ProductList = () => {
           setTotalPages(Math.ceil(filtered.length / 20));
           setLoading(false);
           return;
+        } else {
+          // No cache available offline
+          setProducts([]);
+          setTotalPages(0);
+          setLoading(false);
+          return;
         }
       }
 
-      // Try to fetch from API
+      // Online - try to fetch from API, fallback to cache
       try {
         const data = await fetchProducts({
           page,
@@ -77,12 +97,11 @@ export const ProductList = () => {
         
         // Save to IndexedDB for offline access
         if (data.products && data.products.length > 0) {
-          await saveProducts(data.products);
+          await saveProducts(data.products).catch(console.error);
         }
       } catch (error) {
         console.error('Error loading products:', error);
         // Fallback to cached products
-        const cachedProducts = await getProducts();
         if (cachedProducts.length > 0) {
           let filtered = cachedProducts;
           if (search) {
@@ -97,6 +116,9 @@ export const ProductList = () => {
           }
           setProducts(filtered);
           setTotalPages(Math.ceil(filtered.length / 20));
+        } else {
+          setProducts([]);
+          setTotalPages(0);
         }
       }
     } finally {
@@ -106,34 +128,49 @@ export const ProductList = () => {
 
   const loadCategories = async () => {
     try {
-      // Try to load from cache/IndexedDB first for offline support
+      // Always try to load from cache first
+      const cachedCategories = await getCategories().catch(() => []);
+      
+      // If offline, use cache only
       if (!isOnline()) {
-        const cachedCategories = await getCategories();
         if (cachedCategories.length > 0) {
           setCategories(cachedCategories);
+          return;
+        } else {
+          setCategories([]);
           return;
         }
       }
 
-      // Try to fetch from API
+      // Online - try to fetch from API, fallback to cache
       try {
         const data = await fetchCategories();
         setCategories(data);
         
         // Save to IndexedDB for offline access
         if (data && data.length > 0) {
-          await saveCategories(data);
+          await saveCategories(data).catch(console.error);
         }
       } catch (error) {
         console.error('Error loading categories:', error);
         // Fallback to cached categories
-        const cachedCategories = await getCategories();
         if (cachedCategories.length > 0) {
           setCategories(cachedCategories);
+        } else {
+          setCategories([]);
         }
       }
     } catch (error) {
       console.error('Error loading categories:', error);
+      // Try cache as last resort
+      try {
+        const cachedCategories = await getCategories();
+        if (cachedCategories.length > 0) {
+          setCategories(cachedCategories);
+        }
+      } catch (e) {
+        console.error('Error loading cached categories:', e);
+      }
     }
   };
 

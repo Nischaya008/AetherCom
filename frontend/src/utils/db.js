@@ -1,4 +1,4 @@
-import { openDB } from 'idb';
+import { openDB, deleteDB } from 'idb';
 
 const DB_NAME = 'pwa-store-db';
 const DB_VERSION = 3;
@@ -13,53 +13,112 @@ const STORES = {
 
 // Initialize IndexedDB with persistence
 export const initDB = async () => {
-  const db = await openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      // Cart store - persists indefinitely (until user clears browser data)
-      if (!db.objectStoreNames.contains(STORES.CART)) {
-        const cartStore = db.createObjectStore(STORES.CART, {
-          keyPath: 'productId'
-        });
-        cartStore.createIndex('productId', 'productId', { unique: true });
-      }
+  try {
+    const db = await openDB(DB_NAME, DB_VERSION, {
+      upgrade(db, oldVersion, newVersion, transaction) {
+        // Handle version upgrades
+        console.log(`Upgrading IndexedDB from version ${oldVersion} to ${newVersion}`);
+        
+        // Cart store - persists indefinitely (until user clears browser data)
+        if (!db.objectStoreNames.contains(STORES.CART)) {
+          const cartStore = db.createObjectStore(STORES.CART, {
+            keyPath: 'productId'
+          });
+          cartStore.createIndex('productId', 'productId', { unique: true });
+        }
 
-      // Pending actions store - persists indefinitely (until user clears browser data)
-      if (!db.objectStoreNames.contains(STORES.PENDING_ACTIONS)) {
-        const actionsStore = db.createObjectStore(STORES.PENDING_ACTIONS, {
-          keyPath: 'id'
-        });
-        actionsStore.createIndex('timestamp', 'timestamp');
-        actionsStore.createIndex('type', 'type');
-      }
+        // Pending actions store - persists indefinitely (until user clears browser data)
+        if (!db.objectStoreNames.contains(STORES.PENDING_ACTIONS)) {
+          const actionsStore = db.createObjectStore(STORES.PENDING_ACTIONS, {
+            keyPath: 'id'
+          });
+          actionsStore.createIndex('timestamp', 'timestamp');
+          actionsStore.createIndex('type', 'type');
+        }
 
-      // Orders store - persists indefinitely
-      if (!db.objectStoreNames.contains(STORES.ORDERS)) {
-        const ordersStore = db.createObjectStore(STORES.ORDERS, {
-          keyPath: '_id'
-        });
-        ordersStore.createIndex('createdAt', 'createdAt');
-        ordersStore.createIndex('email', 'email');
-        ordersStore.createIndex('status', 'status');
-      }
+        // Orders store - persists indefinitely
+        if (!db.objectStoreNames.contains(STORES.ORDERS)) {
+          const ordersStore = db.createObjectStore(STORES.ORDERS, {
+            keyPath: '_id'
+          });
+          ordersStore.createIndex('createdAt', 'createdAt');
+          ordersStore.createIndex('email', 'email');
+          ordersStore.createIndex('status', 'status');
+        }
 
-      // Products store - for offline access
-      if (!db.objectStoreNames.contains(STORES.PRODUCTS)) {
-        const productsStore = db.createObjectStore(STORES.PRODUCTS, {
-          keyPath: '_id'
-        });
-        productsStore.createIndex('name', 'name');
-        productsStore.createIndex('categoryId', 'categoryId');
-      }
+        // Products store - for offline access (added in version 3)
+        if (!db.objectStoreNames.contains(STORES.PRODUCTS)) {
+          const productsStore = db.createObjectStore(STORES.PRODUCTS, {
+            keyPath: '_id'
+          });
+          productsStore.createIndex('name', 'name');
+          productsStore.createIndex('categoryId', 'categoryId');
+        }
 
-      // Categories store - for offline access
-      if (!db.objectStoreNames.contains(STORES.CATEGORIES)) {
-        const categoriesStore = db.createObjectStore(STORES.CATEGORIES, {
-          keyPath: '_id'
+        // Categories store - for offline access (added in version 3)
+        if (!db.objectStoreNames.contains(STORES.CATEGORIES)) {
+          const categoriesStore = db.createObjectStore(STORES.CATEGORIES, {
+            keyPath: '_id'
+          });
+          categoriesStore.createIndex('name', 'name');
+        }
+      }
+    });
+    return db;
+  } catch (error) {
+    // Handle version errors - if version mismatch, try to delete and recreate
+    if (error.name === 'VersionError') {
+      console.warn('IndexedDB version mismatch. Clearing old database...');
+      try {
+        // Delete the old database
+        await deleteDB(DB_NAME);
+        // Try again with fresh database
+        return await openDB(DB_NAME, DB_VERSION, {
+          upgrade(db, oldVersion, newVersion, transaction) {
+            console.log(`Creating new IndexedDB version ${newVersion}`);
+            
+            // Cart store
+            const cartStore = db.createObjectStore(STORES.CART, {
+              keyPath: 'productId'
+            });
+            cartStore.createIndex('productId', 'productId', { unique: true });
+
+            // Pending actions store
+            const actionsStore = db.createObjectStore(STORES.PENDING_ACTIONS, {
+              keyPath: 'id'
+            });
+            actionsStore.createIndex('timestamp', 'timestamp');
+            actionsStore.createIndex('type', 'type');
+
+            // Orders store
+            const ordersStore = db.createObjectStore(STORES.ORDERS, {
+              keyPath: '_id'
+            });
+            ordersStore.createIndex('createdAt', 'createdAt');
+            ordersStore.createIndex('email', 'email');
+            ordersStore.createIndex('status', 'status');
+
+            // Products store
+            const productsStore = db.createObjectStore(STORES.PRODUCTS, {
+              keyPath: '_id'
+            });
+            productsStore.createIndex('name', 'name');
+            productsStore.createIndex('categoryId', 'categoryId');
+
+            // Categories store
+            const categoriesStore = db.createObjectStore(STORES.CATEGORIES, {
+              keyPath: '_id'
+            });
+            categoriesStore.createIndex('name', 'name');
+          }
         });
-        categoriesStore.createIndex('name', 'name');
+      } catch (retryError) {
+        console.error('Error recreating IndexedDB:', retryError);
+        throw retryError;
       }
     }
-  });
+    throw error;
+  }
   
   // IndexedDB persists across browser sessions by default
   // Data persists until:

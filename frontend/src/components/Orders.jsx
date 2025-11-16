@@ -21,7 +21,20 @@ export const Orders = () => {
     } else {
       setLoading(false);
     }
-  }, []);
+    
+    // Reload orders when coming back online
+    const handleOnlineSync = () => {
+      if (email || savedEmail) {
+        loadOrders(email || savedEmail);
+      }
+    };
+    
+    window.addEventListener('online-sync-complete', handleOnlineSync);
+    
+    return () => {
+      window.removeEventListener('online-sync-complete', handleOnlineSync);
+    };
+  }, [email]);
 
   const loadOrders = async (emailToSearch) => {
     if (!emailToSearch) {

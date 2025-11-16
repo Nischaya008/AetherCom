@@ -26,6 +26,17 @@ export const CartProvider = ({ children }) => {
   // Load cart from IndexedDB on mount
   useEffect(() => {
     loadCart();
+    
+    // Reload cart when coming back online to sync any changes
+    const handleOnlineSync = () => {
+      loadCart();
+    };
+    
+    window.addEventListener('online-sync-complete', handleOnlineSync);
+    
+    return () => {
+      window.removeEventListener('online-sync-complete', handleOnlineSync);
+    };
   }, []);
 
   const loadCart = async () => {
