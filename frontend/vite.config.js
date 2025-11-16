@@ -105,6 +105,36 @@ export default defineConfig({
                 statuses: [0, 200]
               }
             }
+          },
+          {
+            // Cache JavaScript chunks for offline dynamic imports
+            urlPattern: /\.(?:js|mjs)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'js-cache',
+              cacheableResponse: {
+                statuses: [0, 200]
+              },
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              }
+            }
+          },
+          {
+            // Cache CSS files for offline access
+            urlPattern: /\.(?:css)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'css-cache',
+              cacheableResponse: {
+                statuses: [0, 200]
+              },
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              }
+            }
           }
         ]
       },
