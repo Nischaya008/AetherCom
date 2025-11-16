@@ -112,6 +112,22 @@ export const Checkout = () => {
         const action = createAction(ACTION_TYPES.CHECKOUT, orderData);
         await addPendingAction(action);
         
+        // Optimistically update product stock in cache
+        const { getProduct, saveProducts } = await import('../utils/db.js');
+        for (const item of orderData.lineItems) {
+          try {
+            const cachedProduct = await getProduct(item.productId);
+            if (cachedProduct && cachedProduct.stock !== undefined) {
+              // Update stock optimistically
+              cachedProduct.stock = Math.max(0, cachedProduct.stock - item.quantity);
+              await saveProducts([cachedProduct]);
+            }
+          } catch (error) {
+            console.error('Error updating cached product stock:', error);
+            // Continue with other products
+          }
+        }
+        
         // Create a temporary order object for offline display
         const tempOrder = {
           _id: `temp-${orderData.clientActionId}`,

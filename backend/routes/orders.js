@@ -126,7 +126,8 @@ router.post('/', optionalAuth, validate(schemas.order), async (req, res, next) =
   } catch (error) {
     if (error.code === 11000) {
       // Duplicate key (clientActionId already exists)
-      const existingOrder = await Order.findOne({ clientActionId }).lean();
+      const { clientActionId: actionId } = req.body;
+      const existingOrder = await Order.findOne({ clientActionId: actionId }).lean();
       return res.json({
         order: existingOrder,
         message: 'Order already processed',

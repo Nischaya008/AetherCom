@@ -31,10 +31,26 @@ export const createAction = (type, payload) => {
 };
 
 // Replay pending actions
+// Track which actions are currently being processed to prevent duplicates
+const processingActions = new Set();
+
 export const replayPendingActions = async () => {
   const actions = await getPendingActions();
   
-  for (const action of actions) {
+  // Filter out actions that are already being processed
+  const actionsToProcess = actions.filter(action => !processingActions.has(action.id));
+  
+  if (actionsToProcess.length === 0) {
+    console.log('No new actions to replay');
+    return;
+  }
+  
+  console.log(`Replaying ${actionsToProcess.length} pending action(s)...`);
+  
+  for (const action of actionsToProcess) {
+    // Mark as processing immediately to prevent duplicate processing
+    processingActions.add(action.id);
+    
     try {
       let success = false;
 
@@ -60,10 +76,15 @@ export const replayPendingActions = async () => {
 
       if (success) {
         await removePendingAction(action.id);
+        console.log(`Successfully processed action ${action.id}`);
       }
     } catch (error) {
       console.error('Error replaying action:', error);
-      // Keep action in queue for retry
+      // Keep action in queue for retry, but remove from processing set
+      // so it can be retried later
+    } finally {
+      // Remove from processing set after completion (success or failure)
+      processingActions.delete(action.id);
     }
   }
 };
@@ -88,6 +109,23 @@ const processCheckout = async (action) => {
 
     if (response.ok) {
       const data = await response.json();
+      
+      // Handle duplicate orders (idempotency)
+      if (data.isDuplicate && data.order) {
+        console.log('Order already processed (duplicate), using existing order');
+        const { saveOrder, getOrder, removeOrder } = await import('./db.js');
+        const tempOrderId = `temp-${action.payload.clientActionId}`;
+        const tempOrder = await getOrder(tempOrderId);
+        if (tempOrder) {
+          // Replace temp order with existing order
+          await saveOrder(data.order);
+          await removeOrder(tempOrderId);
+        } else {
+          await saveOrder(data.order);
+        }
+        return true; // Success - order already exists
+      }
+      
       // Update the temp order with the real order data
       if (data.order) {
         const { saveOrder, getOrder, removeOrder, clearProducts } = await import('./db.js');
@@ -130,8 +168,7 @@ export const isOnline = () => {
 // Setup online/offline listeners
 export const setupConnectivityListeners = (onOnline, onOffline) => {
   window.addEventListener('online', () => {
-    console.log('Online - replaying pending actions');
-    replayPendingActions().catch(console.error);
+    console.log('Online event detected');
     onOnline?.();
   });
 
