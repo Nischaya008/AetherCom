@@ -4,6 +4,7 @@ import { useCart } from '../contexts/CartContext.jsx';
 import { createOrder, validateCart } from '../utils/api.js';
 import { createAction, addPendingAction, ACTION_TYPES, isOnline } from '../utils/queue.js';
 import { clearCart, saveOrder } from '../utils/db.js';
+import { getCurrentAddress } from '../utils/geocoding.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export const Checkout = () => {
@@ -13,6 +14,9 @@ export const Checkout = () => {
     email: '',
     shippingAddress: ''
   });
+  const [address, setAddress] = useState(null);
+  const [loadingAddress, setLoadingAddress] = useState(true);
+  const [addressError, setAddressError] = useState(null);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [reconciliation, setReconciliation] = useState(null);
@@ -25,13 +29,43 @@ export const Checkout = () => {
     }
   }, [cart, navigate, submitting, orderPlaced]);
 
+  // Auto-detect location on mount
+  useEffect(() => {
+    const fetchAddress = async () => {
+      setLoadingAddress(true);
+      setAddressError(null);
+      
+      try {
+        const currentAddress = await getCurrentAddress();
+        setAddress(currentAddress);
+        // Set shipping address to formatted address
+        setFormData(prev => ({
+          ...prev,
+          shippingAddress: currentAddress.formatted
+        }));
+      } catch (error) {
+        console.error('Error fetching address:', error);
+        setAddressError(error.message);
+        // Set a default message for shipping address
+        setFormData(prev => ({
+          ...prev,
+          shippingAddress: 'Unable to detect location. Please ensure location permissions are enabled.'
+        }));
+      } finally {
+        setLoadingAddress(false);
+      }
+    };
+
+    fetchAddress();
+  }, []);
+
   const validateForm = () => {
     const newErrors = {};
     if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Valid email is required';
     }
-    if (!formData.shippingAddress || formData.shippingAddress.trim().length < 10) {
-      newErrors.shippingAddress = 'Shipping address must be at least 10 characters';
+    if (!address || !formData.shippingAddress || formData.shippingAddress.trim().length < 10) {
+      newErrors.shippingAddress = 'Please enable location permissions to continue';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -299,14 +333,21 @@ export const Checkout = () => {
   }
 
   return (
-    <div style={{
-      maxWidth: '1400px',
-      margin: '0 auto',
-      padding: '2rem',
-      backgroundColor: '#fafafa',
-      minHeight: '100vh'
-    }}>
-      <div style={{ marginBottom: '2rem' }}>
+    <>
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+      <div style={{
+        maxWidth: '1400px',
+        margin: '0 auto',
+        padding: '2rem',
+        backgroundColor: '#fafafa',
+        minHeight: '100vh'
+      }}>
+        <div style={{ marginBottom: '2rem' }}>
         <Link
           to="/cart"
           style={{
@@ -403,42 +444,158 @@ export const Checkout = () => {
             </div>
 
             <div style={{ marginBottom: '2rem' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '0.75rem',
-                fontWeight: '600',
-                color: '#333',
-                fontSize: '1rem'
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '0.75rem'
               }}>
-                Shipping Address
-              </label>
-              <textarea
-                value={formData.shippingAddress}
-                onChange={(e) => setFormData({ ...formData, shippingAddress: e.target.value })}
-                placeholder="Enter your complete shipping address..."
-                rows="5"
-                style={{
-                  width: '100%',
-                  padding: '0.875rem',
-                  border: errors.shippingAddress ? '2px solid #f44336' : '2px solid #e0e0e0',
+                <label style={{
+                  fontWeight: '600',
+                  color: '#333',
+                  fontSize: '1rem'
+                }}>
+                  Shipping Address
+                </label>
+                {loadingAddress && (
+                  <span style={{
+                    fontSize: '0.875rem',
+                    color: '#667eea',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <span style={{
+                      display: 'inline-block',
+                      width: '14px',
+                      height: '14px',
+                      border: '2px solid #667eea',
+                      borderTop: '2px solid transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 0.8s linear infinite'
+                    }} />
+                    Detecting location...
+                  </span>
+                )}
+              </div>
+              
+              {loadingAddress ? (
+                <div style={{
+                  padding: '2rem',
+                  textAlign: 'center',
+                  backgroundColor: '#f9f9f9',
                   borderRadius: '10px',
-                  fontSize: '1rem',
-                  fontFamily: 'inherit',
-                  resize: 'vertical',
-                  transition: 'border-color 0.2s',
-                  outline: 'none'
-                }}
-                onFocus={(e) => {
-                  if (!errors.shippingAddress) {
-                    e.currentTarget.style.borderColor = '#667eea';
-                  }
-                }}
-                onBlur={(e) => {
-                  if (!errors.shippingAddress) {
-                    e.currentTarget.style.borderColor = '#e0e0e0';
-                  }
-                }}
-              />
+                  border: '2px dashed #e0e0e0'
+                }}>
+                  <p style={{ margin: 0, color: '#666' }}>
+                    Requesting location access...
+                  </p>
+                </div>
+              ) : addressError ? (
+                <div style={{
+                  padding: '1.5rem',
+                  backgroundColor: '#fff3cd',
+                  border: '2px solid #ffc107',
+                  borderRadius: '10px',
+                  color: '#856404'
+                }}>
+                  <p style={{ margin: '0 0 0.5rem 0', fontWeight: '600' }}>
+                    ⚠️ Location Access Required
+                  </p>
+                  <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                    {addressError}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setLoadingAddress(true);
+                      setAddressError(null);
+                      try {
+                        const currentAddress = await getCurrentAddress();
+                        setAddress(currentAddress);
+                        setFormData(prev => ({
+                          ...prev,
+                          shippingAddress: currentAddress.formatted
+                        }));
+                      } catch (error) {
+                        setAddressError(error.message);
+                      } finally {
+                        setLoadingAddress(false);
+                      }
+                    }}
+                    style={{
+                      marginTop: '1rem',
+                      padding: '0.625rem 1.25rem',
+                      backgroundColor: '#ffc107',
+                      color: '#856404',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : address ? (
+                <div style={{
+                  padding: '1.5rem',
+                  backgroundColor: '#f9f9f9',
+                  borderRadius: '10px',
+                  border: '2px solid #e0e0e0'
+                }}>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'auto 1fr',
+                    gap: '0.75rem 1rem',
+                    fontSize: '0.95rem',
+                    color: '#333'
+                  }}>
+                    {address.street && (
+                      <>
+                        <strong style={{ color: '#666' }}>Street:</strong>
+                        <span>{address.street}</span>
+                      </>
+                    )}
+                    {address.city && (
+                      <>
+                        <strong style={{ color: '#666' }}>City:</strong>
+                        <span>{address.city}</span>
+                      </>
+                    )}
+                    {address.state && (
+                      <>
+                        <strong style={{ color: '#666' }}>State:</strong>
+                        <span>{address.state}</span>
+                      </>
+                    )}
+                    {address.postalCode && (
+                      <>
+                        <strong style={{ color: '#666' }}>Postal Code:</strong>
+                        <span>{address.postalCode}</span>
+                      </>
+                    )}
+                    {address.country && (
+                      <>
+                        <strong style={{ color: '#666' }}>Country:</strong>
+                        <span>{address.country}</span>
+                      </>
+                    )}
+                  </div>
+                  <div style={{
+                    marginTop: '1rem',
+                    paddingTop: '1rem',
+                    borderTop: '1px solid #e0e0e0',
+                    fontSize: '0.9rem',
+                    color: '#666',
+                    fontStyle: 'italic'
+                  }}>
+                    📍 {formData.shippingAddress}
+                  </div>
+                </div>
+              ) : null}
+              
               {errors.shippingAddress && (
                 <span style={{
                   color: '#f44336',
@@ -453,34 +610,34 @@ export const Checkout = () => {
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || loadingAddress || !address}
               style={{
                 width: '100%',
                 padding: '1.125rem',
-                backgroundColor: submitting ? '#ccc' : '#667eea',
+                backgroundColor: (submitting || loadingAddress || !address) ? '#ccc' : '#667eea',
                 color: 'white',
                 border: 'none',
                 borderRadius: '12px',
-                cursor: submitting ? 'not-allowed' : 'pointer',
+                cursor: (submitting || loadingAddress || !address) ? 'not-allowed' : 'pointer',
                 fontSize: '1.1rem',
                 fontWeight: '600',
                 transition: 'all 0.2s',
-                boxShadow: submitting ? 'none' : '0 4px 12px rgba(102, 126, 234, 0.3)'
+                boxShadow: (submitting || loadingAddress || !address) ? 'none' : '0 4px 12px rgba(102, 126, 234, 0.3)'
               }}
               onMouseEnter={(e) => {
-                if (!submitting) {
+                if (!submitting && !loadingAddress && address) {
                   e.currentTarget.style.backgroundColor = '#5568d3';
                   e.currentTarget.style.transform = 'translateY(-2px)';
                 }
               }}
               onMouseLeave={(e) => {
-                if (!submitting) {
+                if (!submitting && !loadingAddress && address) {
                   e.currentTarget.style.backgroundColor = '#667eea';
                   e.currentTarget.style.transform = 'translateY(0)';
                 }
               }}
             >
-              {submitting ? 'Processing Order...' : 'Place Order'}
+              {loadingAddress ? 'Detecting Location...' : submitting ? 'Processing Order...' : 'Place Order'}
             </button>
           </form>
         </div>
@@ -591,5 +748,6 @@ export const Checkout = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };

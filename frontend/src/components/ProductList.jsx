@@ -225,7 +225,7 @@ export const ProductList = () => {
             maxWidth: '600px',
             margin: '0 auto 2.5rem'
           }}>
-            Shop from our curated collection of premium products, available online and offline
+            E-commerce that refuses to go offline | Shopping that survives the network
           </p>
 
           {/* Search Bar */}

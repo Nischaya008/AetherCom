@@ -62,7 +62,7 @@ export const Header = () => {
                 letterSpacing: '-0.02em'
               }}
             >
-              PWA Store
+              AetherCom
             </span>
           </Link>
           <div style={{ 
