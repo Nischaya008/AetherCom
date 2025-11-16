@@ -1,0 +1,45 @@
+{
+  "name": "pwa-store-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "dev:https": "vite --host --https",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:e2e": "playwright test",
+    "vercel-build": "npm run build"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^6.26.0",
+    "idb": "^8.0.0",
+    "workbox-window": "^7.1.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@types/uuid": "^9.0.8",
+    "@vitejs/plugin-react-swc": "^4.2.1",
+    "vite": "^7.2.2",
+    "vite-plugin-pwa": "^0.20.5",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "vitest": "^2.1.0",
+    "@playwright/test": "^1.46.0",
+    "workbox-precaching": "^7.1.0",
+    "workbox-routing": "^7.1.0",
+    "workbox-strategies": "^7.1.0",
+    "workbox-background-sync": "^7.1.0",
+    "workbox-cacheable-response": "^7.1.0",
+    "workbox-expiration": "^7.1.0"
+  }
+}

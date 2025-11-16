@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: pwa-store-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: pwa-store
+    networks:
+      - pwa-network
+
+  api:
+    build: .
+    container_name: pwa-store-api
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/pwa-store
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
+      - NODE_ENV=production
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:5173}
+    depends_on:
+      - mongodb
+    networks:
+      - pwa-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+
+networks:
+  pwa-network:
+    driver: bridge
+
