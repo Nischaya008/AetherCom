@@ -216,7 +216,7 @@ export const ProductList = () => {
             marginBottom: '1rem',
             letterSpacing: '-0.02em'
           }}>
-            Discover Amazing Products
+            E-commerce that refuses to go offline
           </h1>
           <p style={{
             fontSize: 'clamp(1rem, 2vw, 1.25rem)',
@@ -225,7 +225,7 @@ export const ProductList = () => {
             maxWidth: '600px',
             margin: '0 auto 2.5rem'
           }}>
-            E-commerce that refuses to go offline | Shopping that survives the network
+            Shopping that survives the network
           </p>
 
           {/* Search Bar */}
