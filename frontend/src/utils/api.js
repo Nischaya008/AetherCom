@@ -1,6 +1,7 @@
-// Use relative URL in production (same domain), or env variable, or localhost for dev
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
-  (import.meta.env.PROD ? '/api' : 'http://localhost:5000/api');
+// Always use relative URL in production (same domain), or env variable for dev, or localhost fallback
+const API_BASE_URL = import.meta.env.PROD 
+  ? '/api' 
+  : (import.meta.env.VITE_API_URL || 'http://localhost:5000/api');
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('token');
